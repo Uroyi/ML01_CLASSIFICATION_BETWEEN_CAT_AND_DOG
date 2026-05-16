@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 def train_model():
     # 1. Configuration
-    data_dir = "cat_dog/dataset"
+    data_dir = os.path.join(os.path.dirname(__file__), "dataset")
     batch_size = 32
     num_epochs = 10
     learning_rate = 0.001
