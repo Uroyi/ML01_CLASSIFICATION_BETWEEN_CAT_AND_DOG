@@ -34,7 +34,7 @@ jobs:
           from huggingface_hub import HfApi
 
           token = os.environ["HF_TOKEN"]
-          repo_id = "Uroy1/ML01_CLASSIFICATION_BETWEEN_CAT_AND_DOG"
+          repo_id = os.environ.get("HF_REPO_ID", "Uroy1/ML01_CLASSIFICATION_BETWEEN_CAT_AND_DOG")
           api = HfApi()
 
           # Create repo if it doesn't exist

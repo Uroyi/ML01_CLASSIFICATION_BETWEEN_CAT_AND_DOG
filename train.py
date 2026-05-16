@@ -12,10 +12,19 @@ def train_model():
     # 1. Configuration
     data_dir = os.path.join(os.path.dirname(__file__), "dataset")
     batch_size = 32
-    num_epochs = 10
-    learning_rate = 0.001
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+
+    # For lightweight training on CPU (e.g., GitHub Actions)
+    if device.type == "cpu":
+        num_epochs = 1
+        num_workers = 0
+        print("CPU detected: Running lightweight training (1 epoch, 0 workers)")
+    else:
+        num_epochs = 10
+        num_workers = 2
+
+    learning_rate = 0.001
 
     # 2. Data Augmentation and Transforms
     transform = transforms.Compose(
@@ -38,10 +47,10 @@ def train_model():
     val_size = len(val_dataset)
 
     train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=2
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False, num_workers=2
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
     )
 
     class_names = train_dataset.classes
@@ -89,8 +98,8 @@ def train_model():
             running_loss += loss.item() * inputs.size(0)
             running_corrects += torch.sum(preds == labels.data).item()
 
-        epoch_loss = running_loss / train_size
-        epoch_acc = running_corrects / train_size
+        epoch_loss = running_loss / train_size if train_size > 0 else 0
+        epoch_acc = running_corrects / train_size if train_size > 0 else 0
         print(f"Train Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}")
 
         # Validation Phase
@@ -98,21 +107,24 @@ def train_model():
         val_loss = 0.0
         val_corrects = 0
 
-        with torch.no_grad():
-            for inputs, labels in tqdm(val_loader, desc="Validation"):
-                inputs = inputs.to(device)
-                labels = labels.to(device)
+        if val_size > 0:
+            with torch.no_grad():
+                for inputs, labels in tqdm(val_loader, desc="Validation"):
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)
 
-                outputs = model(inputs)
-                _, preds = torch.max(outputs, 1)
-                loss = criterion(outputs, labels)
+                    outputs = model(inputs)
+                    _, preds = torch.max(outputs, 1)
+                    loss = criterion(outputs, labels)
 
-                val_loss += loss.item() * inputs.size(0)
-                val_corrects += torch.sum(preds == labels.data).item()
+                    val_loss += loss.item() * inputs.size(0)
+                    val_corrects += torch.sum(preds == labels.data).item()
 
-        val_loss = val_loss / val_size
-        val_acc = val_corrects / val_size
-        print(f"Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}")
+            val_loss = val_loss / val_size
+            val_acc = val_corrects / val_size
+            print(f"Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}")
+        else:
+            print("Validation skipped (val_size = 0)")
 
     # 7. Save Model
     torch.save(model.state_dict(), "cat_dog_model.pth")
